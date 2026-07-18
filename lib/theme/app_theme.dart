@@ -101,7 +101,15 @@ class AppColors extends ThemeExtension<AppColors> {
 
 class AppTheme {
   static TextTheme _textTheme(Color body) {
-    return GoogleFonts.plusJakartaSansTextTheme().apply(
+    final base = GoogleFonts.plusJakartaSansTextTheme();
+    return base.copyWith(
+      bodyLarge: base.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: body),
+      bodyMedium: base.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: body),
+      bodySmall: base.bodySmall?.copyWith(fontWeight: FontWeight.bold, color: body),
+      titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: body),
+      titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: body),
+      titleSmall: base.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: body),
+    ).apply(
       bodyColor: body,
       displayColor: body,
     );
