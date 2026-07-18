@@ -5,9 +5,9 @@ build/
 .flutter-plugins-dependencies
 *.iml
 .idea/
-android/
-ios/
-linux/
-macos/
-windows/
-web/
+
+# Build caches and local configurations
+.gradle/
+.kotlin/
+local.properties
+*.log
