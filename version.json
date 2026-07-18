@@ -2,5 +2,5 @@
   "version": "1.0.2",
   "build": "3",
   "apk_url": "https://github.com/AnshNagre/prem_kirana_ledger/releases/download/v1.0.2-3/app-release-1.0.2.apk",
-  "notes": "- Bump to 1.0.2+3 — real update test\n- Update version.json [skip ci]"
+  "notes": "- Add deployment and update workflow documentation\n- Update version.json [skip ci]"
 }
