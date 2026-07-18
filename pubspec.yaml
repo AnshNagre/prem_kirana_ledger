@@ -1,0 +1,47 @@
+name: prem_kirana_ledger
+description: Prem Kirana Ledger - Udhar/Jama customer ledger book app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # State management
+  provider: ^6.1.2
+
+  # Fonts matching the HTML (Plus Jakarta Sans + JetBrains Mono)
+  google_fonts: ^6.2.1
+
+  # Date / number formatting (Indian rupee grouping, dd/mm/yyyy)
+  intl: ^0.19.0
+
+  # Local persistence (mirrors the localStorage usage in the HTML version)
+  shared_preferences: ^2.2.3
+
+  # Camera / gallery capture for transaction + KYC snapshots
+  image_picker: ^1.1.2
+
+  # PDF ledger statement export (mirrors jsPDF + autotable in the HTML)
+  pdf: ^3.11.1
+  printing: ^5.13.1
+  path_provider: ^2.1.4
+
+  # Share the exported PDF / receipt
+  share_plus: ^10.0.2
+
+  # Unique ids for customers/transactions
+  uuid: ^4.4.2
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
