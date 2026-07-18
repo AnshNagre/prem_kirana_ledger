@@ -10,9 +10,23 @@ import '../widgets/bulk_txn_sheet.dart';
 import '../widgets/customer_card.dart';
 import '../widgets/settings_sheet.dart';
 import 'customer_timeline.dart';
+import '../utils/update_checker.dart';
 
-class HomeDashboard extends StatelessWidget {
+class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
+
+  @override
+  State<HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<HomeDashboard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateChecker.checkForUpdate(context);
+    });
+  }
 
   void _openAddCustomer(BuildContext context) {
     showModalBottomSheet(
