@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "build": "2",
-  "apk_url": "https://github.com/AnshNagre/prem_kirana_ledger/releases/download/v1.0.1-2/app-release-1.0.1.apk",
-  "notes": "- Bump version to 1.0.1+2\n- Apply global bold theme styles to body and title typography\n- Update version.json [skip ci]\n- Add in-app update checker\n- Convert HomeDashboard to StatefulWidget and check for updates in initState\n- Add package_info_plus and http dependencies\n- Pin Flutter to 3.44.6, convert build.gradle to Groovy to fix path build error\n- Update version.json [skip ci]"
+  "version": "1.0.2",
+  "build": "3",
+  "apk_url": "https://github.com/AnshNagre/prem_kirana_ledger/releases/download/v1.0.2-3/app-release-1.0.2.apk",
+  "notes": "- Bump to 1.0.2+3 — real update test\n- Update version.json [skip ci]"
 }
