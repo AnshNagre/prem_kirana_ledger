@@ -1,0 +1,76 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Extract version from pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          BUILD=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk app-release-${{ steps.version.outputs.version }}.apk
+
+      - name: Get changelog since last release
+        id: changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            LOG=$(git log --pretty=format:"- %s" -n 10)
+          else
+            LOG=$(git log $LAST_TAG..HEAD --pretty=format:"- %s")
+          fi
+          ESCAPED=$(echo "$LOG" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+          echo "log=$ESCAPED" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}-${{ steps.version.outputs.build }}
+          name: Release v${{ steps.version.outputs.version }}
+          files: app-release-${{ steps.version.outputs.version }}.apk
+          body: "Automated build from commit ${{ github.sha }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update version.json
+        run: |
+          cat > version.json << EOF
+          {
+            "version": "${{ steps.version.outputs.version }}",
+            "build": "${{ steps.version.outputs.build }}",
+            "apk_url": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}-${{ steps.version.outputs.build }}/app-release-${{ steps.version.outputs.version }}.apk",
+            "notes": "${{ steps.changelog.outputs.log }}"
+          }
+          EOF
+
+      - name: Commit version.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add version.json
+          git commit -m "Update version.json [skip ci]" || echo "No changes"
+          git push
