@@ -1,0 +1,6 @@
+{
+  "version": "1.0.0",
+  "build": "1",
+  "apk_url": "https://github.com/AnshNagre/prem_kirana_ledger/releases/download/v1.0.0-1/app-release-1.0.0.apk",
+  "notes": "- Track project platform folders in repository\n- Fix Flutter version in CI to match local\n- Add CI/CD workflow\n- Initial commit — prem_kirana_ledger with Android permissions"
+}
