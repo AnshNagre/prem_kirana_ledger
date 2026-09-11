@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// The pull-handle bar shown at the top of every bottom sheet.
-Widget sheetGrabber() => Center(
-      child: Container(
-        width: 48,
-        height: 5,
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(3)),
-      ),
+Widget sheetGrabber([BuildContext? context]) => Builder(
+      builder: (ctx) {
+        final c = (context ?? ctx).colors;
+        return Center(
+          child: Container(
+            width: 48,
+            height: 5,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(color: c.muted.withOpacity(0.35), borderRadius: BorderRadius.circular(3)),
+          ),
+        );
+      },
     );
 
 /// A field wrapped with an uppercase mini-label, matching the HTML form

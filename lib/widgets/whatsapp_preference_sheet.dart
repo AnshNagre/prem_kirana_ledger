@@ -45,11 +45,28 @@ class WhatsappPreferenceSheet extends StatelessWidget {
                         ),
                         child: SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text(customer.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.textBody)),
-                          subtitle: Text(customer.phone, style: TextStyle(fontSize: 11, color: c.muted)),
+                          title: Row(
+                            children: [
+                              Text(customer.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.textBody)),
+                              const SizedBox(width: 6),
+                              Text('(${customer.accountNumber})', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: c.brandPrimary, fontFamily: 'monospace')),
+                            ],
+                          ),
+                          subtitle: Text(
+                            '${customer.category.label} · ${customer.phone.trim().isNotEmpty ? customer.phone : 'No phone added'}',
+                            style: TextStyle(fontSize: 11, color: c.muted),
+                          ),
                           value: customer.whatsappEnabled,
                           activeColor: c.brandPrimary,
-                          onChanged: (v) => provider.updateWhatsappPreference(customer, v),
+                          onChanged: (v) {
+                            if (v && customer.phone.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Cannot enable WhatsApp: no phone number added')),
+                              );
+                              return;
+                            }
+                            provider.updateWhatsappPreference(customer, v);
+                          },
                         ),
                       );
                     },

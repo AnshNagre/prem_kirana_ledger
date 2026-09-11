@@ -6,6 +6,12 @@ enum TxnType { udhar, jama }
 extension TxnTypeX on TxnType {
   String get label => this == TxnType.udhar ? 'UDHAR' : 'JAMA';
   bool get isUdhar => this == TxnType.udhar;
+  String displayLabel({bool isHindi = false}) {
+    if (isHindi) {
+      return this == TxnType.udhar ? 'उधार' : 'जमा';
+    }
+    return label;
+  }
 }
 
 /// Payment mode, only meaningful for JAMA (credit) entries.

@@ -58,8 +58,9 @@ Future<void> exportCustomerLedgerPdf(Customer customer) async {
             pw.Text('LEDGER ACCOUNT STATEMENT',
                 style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: slate900)),
             pw.SizedBox(height: 4),
-            pw.Text('Customer Name : ${customer.name}', style: const pw.TextStyle(fontSize: 10, color: slate600)),
-            pw.Text('Mobile Number : ${customer.phone}', style: const pw.TextStyle(fontSize: 10, color: slate600)),
+            pw.Text('Account Number: ${customer.accountNumber}', style: const pw.TextStyle(fontSize: 10, color: slate600)),
+            pw.Text('Customer Name : ${customer.name} (${customer.category.label})', style: const pw.TextStyle(fontSize: 10, color: slate600)),
+            pw.Text('Mobile Number : ${customer.phone.trim().isNotEmpty ? customer.phone : 'Not provided'}', style: const pw.TextStyle(fontSize: 10, color: slate600)),
             pw.Text('Statement Date: $statementDate', style: const pw.TextStyle(fontSize: 10, color: slate600)),
             pw.SizedBox(height: 8),
             pw.Container(

@@ -78,7 +78,7 @@ class ShareReceiptSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _infoRow(Icons.person_outline, customer.name),
+                _infoRow(Icons.person_outline, '${customer.name} (${customer.accountNumber})'),
                 const SizedBox(height: 10),
                 _infoRow(Icons.access_time, '${txn.date} ${txn.time}', color: const Color(0xFF7C3AED)),
                 const SizedBox(height: 10),
@@ -157,8 +157,8 @@ class ShareReceiptSheet extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Colors.white.withOpacity(0.1)),
-                foregroundColor: Colors.white70,
+                side: BorderSide(color: c.borderHairline),
+                foregroundColor: c.muted,
               ),
               child: const Text('DISMISS PREVIEW', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1, fontSize: 11)),
             ),
@@ -173,7 +173,7 @@ class ShareReceiptSheet extends StatelessWidget {
     final amountText = formatRupees(txn.amount);
     final balanceText = formatRupees(txn.balAfter);
     final message = "Prem Kirana Store Receipt:\n\n"
-        "Customer: ${customer.name}\n"
+        "Customer: ${customer.name} (Acc: ${customer.accountNumber})\n"
         "Type: ${isUdhar ? 'UDHAR (DEBIT)' : 'JAMA (CREDIT)'}\n"
         "Amount: ${amountText.replaceAll(" ", "")}\n"
         "Date: ${txn.date} ${txn.time}\n"
@@ -184,17 +184,26 @@ class ShareReceiptSheet extends StatelessWidget {
   }
 
   Future<void> _sendReceiptViaWhatsApp(BuildContext context) async {
+    final cleanPhone = customer.phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No mobile number added for this customer')),
+        );
+      }
+      return;
+    }
     final isUdhar = txn.type.isUdhar;
     final amountText = formatRupees(txn.amount);
     final balanceText = formatRupees(txn.balAfter);
     final message = "Hello ${customer.name},\n\nHere is your receipt from Prem Kirana Store:\n\n"
+        "Account No: *${customer.accountNumber}*\n"
         "Type: *${isUdhar ? 'UDHAR (DEBIT)' : 'JAMA (CREDIT)'}*\n"
         "Amount: *${amountText.replaceAll(" ", "")}*\n"
         "Date: *${txn.date} ${txn.time}*\n"
         "Remarks: *${txn.desc.isEmpty ? '—' : txn.desc}*\n\n"
         "Closing Balance: *${balanceText.replaceAll(" ", "")}*\n\n"
         "Thank you!\nPrem Kirana Ledger";
-    final cleanPhone = customer.phone.replaceAll(RegExp(r'\D'), '');
     
     // Fallback if country code is not present
     var phoneForUrl = cleanPhone;

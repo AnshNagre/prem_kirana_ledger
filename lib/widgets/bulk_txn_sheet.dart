@@ -50,6 +50,23 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
   String? _photoPath;
 
   @override
+  void initState() {
+    super.initState();
+    final drafts = context.read<LedgerProvider>().bulkDraftEntries;
+    for (final d in drafts) {
+      _queue.add(_StagedEntry(
+        customerName: d.customerName,
+        type: d.type,
+        amount: d.amount,
+        date: d.date,
+        desc: d.desc,
+        mode: d.mode,
+        photoPath: d.photoPath,
+      ));
+    }
+  }
+
+  @override
   void dispose() {
     _nameCtrl.dispose();
     _amountCtrl.dispose();
@@ -57,11 +74,23 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
     super.dispose();
   }
 
+  void _syncDrafts() {
+    final provider = context.read<LedgerProvider>();
+    provider.setBulkDraftEntries(_queue.map((e) => BulkTxnDraftEntry(
+      customerName: e.customerName,
+      type: e.type,
+      amount: e.amount,
+      date: e.date,
+      desc: e.desc,
+      mode: e.mode,
+      photoPath: e.photoPath,
+    )).toList());
+  }
+
   void _onNameChanged(String value) {
     final provider = context.read<LedgerProvider>();
     setState(() => _suggestions = provider.autocompleteByName(value));
   }
-
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -73,13 +102,62 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  Future<void> _capturePhoto() async {
+  Future<void> _pickPhoto(ImageSource source) async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+    final file = await picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (file != null) setState(() => _photoPath = file.path);
   }
 
-  void _addToQueue() {
+  void _showPhotoOptions() {
+    final c = context.colors;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Container(
+          color: c.bgElevated,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              sheetGrabber(),
+              Text('Attach Photo / Proof', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: c.textBody)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.camera_alt_outlined, color: c.brandPrimary),
+                title: Text('Take Live Photo', style: TextStyle(fontWeight: FontWeight.w800, color: c.textBody)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: c.bgSurface,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickPhoto(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined, color: const Color(0xFF6366F1)),
+                title: Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w800, color: c.textBody)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: c.bgSurface,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickPhoto(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addToQueue() async {
     final name = _nameCtrl.text.trim();
     final amount = double.tryParse(_amountCtrl.text.trim());
     if (name.isEmpty) {
@@ -90,6 +168,94 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount')));
       return;
     }
+
+    final provider = context.read<LedgerProvider>();
+    final hasExistingInLedger = provider.hasExistingTransaction(
+      customerName: name,
+      date: _date,
+      amount: amount,
+      type: _type,
+    );
+    final hasExistingInQueue = _queue.any((e) =>
+        e.customerName.trim().toLowerCase() == name.toLowerCase() &&
+        e.type == _type &&
+        (e.amount - amount).abs() < 0.001 &&
+        e.date.year == _date.year &&
+        e.date.month == _date.month &&
+        e.date.day == _date.day);
+
+    if (hasExistingInLedger || hasExistingInQueue) {
+      final formattedDate = '${_date.day}/${_date.month}/${_date.year}';
+      final formattedAmount = formatRupees(amount);
+      final entryTypeLabel = _type.displayLabel(isHindi: provider.isHindiMode);
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) {
+          final c = dialogCtx.colors;
+          return AlertDialog(
+            backgroundColor: c.bgElevated,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: c.borderHairline),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: c.warning, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'Duplicate Entry Alert',
+                  style: TextStyle(
+                    color: c.textBody,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'This entry already exists for "$name" on $formattedDate ($entryTypeLabel $formattedAmount).\n\nWould you like to enter this?',
+              style: TextStyle(
+                color: c.textBody,
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: Text(
+                  'No',
+                  style: TextStyle(
+                    color: c.muted,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: c.brandPrimary,
+                  foregroundColor: c.bgDeep,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Yes',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirm != true) {
+        return;
+      }
+    }
+
     setState(() {
       _queue.add(_StagedEntry(
         customerName: name,
@@ -103,6 +269,14 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
       _amountCtrl.clear();
       _remarksCtrl.clear();
       _photoPath = null;
+      _syncDrafts();
+    });
+  }
+
+  void _clearAllStaged() {
+    setState(() {
+      _queue.clear();
+      context.read<LedgerProvider>().clearBulkDraftEntries();
     });
   }
 
@@ -127,7 +301,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
     final provider = context.read<LedgerProvider>();
     for (final entry in _queue) {
       var customer = provider.findCustomerByName(entry.customerName);
-      customer ??= provider.addCustomer(name: entry.customerName, phone: '—');
+      customer ??= provider.addCustomer(name: entry.customerName, phone: '');
       provider.addTransaction(
         customer,
         type: entry.type,
@@ -138,6 +312,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
         timestamp: entry.date,
       );
     }
+    provider.clearBulkDraftEntries();
     Navigator.pop(context);
   }
 
@@ -201,8 +376,20 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                         children: _suggestions
                             .map((s) => ListTile(
                                   dense: true,
-                                  title: Text(s.name, style: TextStyle(color: c.textBody, fontSize: 13)),
-                                  subtitle: Text(s.phone, style: TextStyle(color: c.muted, fontSize: 11)),
+                                  title: Row(
+                                    children: [
+                                      Text(
+                                        s.displayName(isHindi: provider.isHindiMode),
+                                        style: TextStyle(color: c.textBody, fontSize: 13, fontWeight: FontWeight.w700),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text('(${s.accountNumber})', style: TextStyle(color: c.brandPrimary, fontSize: 11, fontFamily: 'monospace')),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    '${s.category.label} · ${s.phone.isNotEmpty ? s.phone : 'No phone added'}',
+                                    style: TextStyle(color: c.muted, fontSize: 11),
+                                  ),
                                   onTap: () {
                                     _nameCtrl.text = s.name;
                                     setState(() => _suggestions = []);
@@ -272,9 +459,9 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                     'ENTRY TYPE',
                     Row(
                       children: [
-                        Expanded(child: _typeToggle(context, TxnType.udhar, 'UDHAR (DEBIT)', c.udhar)),
+                        Expanded(child: _typeToggle(context, TxnType.udhar, provider.isHindiMode ? 'उधार (UDHAR)' : 'UDHAR (DEBIT)', c.udhar)),
                         const SizedBox(width: 8),
-                        Expanded(child: _typeToggle(context, TxnType.jama, 'JAMA (CREDIT)', c.jama)),
+                        Expanded(child: _typeToggle(context, TxnType.jama, provider.isHindiMode ? 'जमा (JAMA)' : 'JAMA (CREDIT)', c.jama)),
                       ],
                     ),
                   ),
@@ -332,7 +519,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
-                            onPressed: _capturePhoto,
+                            onPressed: _showPhotoOptions,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: c.bgSurface,
                               foregroundColor: c.brandPrimary,
@@ -341,8 +528,8 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               minimumSize: const Size(0, 48),
                             ),
-                            icon: const Icon(Icons.camera_alt_outlined, size: 16),
-                            label: const Text('Capture', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                            icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                            label: const Text('Add Photo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                           ),
                           if (_photoPath != null) ...[
                             const SizedBox(width: 8),
@@ -373,14 +560,26 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('STAGED QUEUE (${_queue.length})',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: c.muted, letterSpacing: 0.6)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('STAGED QUEUE (${_queue.length})',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: c.muted, letterSpacing: 0.6)),
+                if (_queue.isNotEmpty)
+                  GestureDetector(
+                    onTap: _clearAllStaged,
+                    child: Text('CLEAR ALL',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: c.udhar, letterSpacing: 0.5)),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             if (_queue.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Center(
-                    child: Text('No entries staged yet', style: TextStyle(color: c.muted, fontSize: 12))),
+                    child: Text('No entries staged yet. Add entries above and they will be saved automatically.',
+                        style: TextStyle(color: c.muted, fontSize: 11), textAlign: TextAlign.center)),
               )
             else
               ..._queue.asMap().entries.map((e) {
@@ -414,18 +613,29 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(entry.customerName,
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: c.textBody)),
+                            Text(
+                              provider.isHindiMode
+                                  ? (provider.findCustomerByName(entry.customerName)?.displayName(isHindi: true) ?? entry.customerName)
+                                  : entry.customerName,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: c.textBody),
+                            ),
                             const SizedBox(height: 2),
-                            Text('${entry.type.label} · ${entry.date.day}/${entry.date.month}/${entry.date.year}',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.muted)),
+                            Text(
+                              '${entry.type.displayLabel(isHindi: provider.isHindiMode)} · ${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.muted),
+                            ),
                           ],
                         ),
                       ),
                       Text(formatRupees(entry.amount), style: AppTheme.rupeeMono(accent, size: 13, weight: FontWeight.w800)),
                       IconButton(
                         icon: Icon(Icons.close, size: 16, color: c.muted),
-                        onPressed: () => setState(() => _queue.removeAt(i)),
+                        onPressed: () {
+                          setState(() {
+                            _queue.removeAt(i);
+                            _syncDrafts();
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -440,7 +650,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(side: BorderSide(color: c.borderHairline)),
-                      child: Text('Cancel', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
+                      child: Text('Close', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ),
@@ -455,7 +665,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                         foregroundColor: c.bgDeep,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('DONE & COMMIT', style: TextStyle(fontWeight: FontWeight.w900)),
+                      child: const Text('COMMIT ALL ENTRIES', style: TextStyle(fontWeight: FontWeight.w900)),
                     ),
                   ),
                 ),

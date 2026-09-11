@@ -10,6 +10,8 @@ import '../state/ledger_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../utils/pdf_export.dart';
+import '../widgets/add_customer_sheet.dart';
+import '../widgets/customer_card.dart';
 import '../widgets/share_receipt_sheet.dart';
 import '../widgets/transaction_tile.dart';
 import '../widgets/txn_form_sheet.dart';
@@ -26,6 +28,30 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
   bool _searchOpen = false;
   String _query = '';
   bool _showAllHistory = false;
+  final Set<String> _selectedTxnIds = {};
+
+  void _openEditCustomer() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: Container(
+          color: context.colors.bgElevated,
+          child: AddCustomerSheet(customer: widget.customer),
+        ),
+      ),
+    );
+  }
+
+  void _openEditTxn(LedgerTransaction txn) {
+    showTxnFormSheet(
+      context,
+      customer: widget.customer,
+      editingTxn: txn,
+    );
+  }
 
   List<LedgerTransaction> get _filteredTxns {
     final all = widget.customer.transactions.toList();
@@ -49,16 +75,21 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
   }
 
   Future<void> _sendLedgerViaWhatsApp() async {
+    final cleanPhone = widget.customer.phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No mobile number added for this customer')),
+      );
+      return;
+    }
     final balance = widget.customer.balance;
     final balanceText = formatRupees(balance);
     final status = balance > 0 ? "outstanding Udhar (debit)" : (balance < 0 ? "advance Jama (credit)" : "settled balance");
     final message = "Hello ${widget.customer.name},\n\nYour current net balance status at Prem Kirana Store is *${balanceText.replaceAll(" ", "")}* ($status).\n\nThank you!\nPrem Kirana Ledger";
-    final cleanPhone = widget.customer.phone.replaceAll(RegExp(r'\D'), '');
     
-    // Fallback if country code is not present
     var phoneForUrl = cleanPhone;
     if (phoneForUrl.length == 10) {
-      phoneForUrl = "91$phoneForUrl"; // default to Indian country code
+      phoneForUrl = "91$phoneForUrl";
     }
     
     final url = "https://wa.me/$phoneForUrl?text=${Uri.encodeComponent(message)}";
@@ -73,11 +104,17 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
   }
 
   Future<void> _sendLedgerViaSMS() async {
+    final cleanPhone = widget.customer.phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No mobile number added for this customer')),
+      );
+      return;
+    }
     final balance = widget.customer.balance;
     final balanceText = formatRupees(balance);
     final status = balance > 0 ? "outstanding Udhar" : (balance < 0 ? "advance Jama" : "settled balance");
     final message = "Hello ${widget.customer.name},\n\nYour current net balance status at Prem Kirana Store is ${balanceText.replaceAll(" ", "")} ($status).\n\nThank you!\nPrem Kirana Ledger";
-    final cleanPhone = widget.customer.phone.replaceAll(RegExp(r'\D'), '');
     final url = "sms:$cleanPhone?body=${Uri.encodeComponent(message)}";
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -87,16 +124,106 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
     }
   }
 
-  Future<void> _shareLedgerSummary() async {
-    final balance = widget.customer.balance;
-    final balanceText = formatRupees(balance);
-    final status = balance > 0 ? "outstanding Udhar" : (balance < 0 ? "advance Jama" : "settled balance");
-    final message = "Prem Kirana Ledger Statement:\n"
-        "Customer: ${widget.customer.name}\n"
-        "Net Balance: ${balanceText.replaceAll(" ", "")} ($status)\n"
-        "Total Transactions: ${widget.customer.transactions.length}\n\n"
-        "Generated via Prem Kirana Ledger App.";
-    await Share.share(message, subject: "${widget.customer.name} - Ledger Summary");
+  void _confirmDeleteSingleTxn(LedgerTransaction txn) {
+    final c = context.colors;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: c.bgElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: c.udhar, size: 22),
+            const SizedBox(width: 8),
+            Text('Delete Transaction?', style: TextStyle(color: c.textBody, fontWeight: FontWeight.w900, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete this ${txn.type.label} of ${formatRupees(txn.amount)}? Customer balance will be updated.',
+          style: TextStyle(color: c.muted, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text('Cancel', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: c.udhar,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              context.read<LedgerProvider>().deleteSingleTransaction(widget.customer, txn);
+              Navigator.pop(dialogCtx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Transaction deleted & balance recalculated'),
+                  backgroundColor: c.udhar,
+                ),
+              );
+            },
+            child: const Text('Delete Entry', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteSelected() {
+    final c = context.colors;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: c.bgElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: c.udhar, size: 22),
+            const SizedBox(width: 8),
+            Text('Delete ${_selectedTxnIds.length} Transactions?',
+                style: TextStyle(color: c.textBody, fontWeight: FontWeight.w900, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete the ${_selectedTxnIds.length} selected transaction(s)? Customer balance will be recalculated automatically.',
+          style: TextStyle(color: c.muted, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text('Cancel', style: TextStyle(color: c.muted, fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: c.udhar,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final provider = context.read<LedgerProvider>();
+              final txnsToDelete = widget.customer.transactions
+                  .where((t) => _selectedTxnIds.contains(t.id))
+                  .toList();
+              for (final t in txnsToDelete) {
+                provider.deleteSingleTransaction(widget.customer, t);
+              }
+              setState(() {
+                _selectedTxnIds.clear();
+              });
+              Navigator.pop(dialogCtx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Deleted ${txnsToDelete.length} transaction(s)'),
+                  backgroundColor: c.udhar,
+                ),
+              );
+            },
+            child: const Text('Delete Selected', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmDeleteAll() {
@@ -131,7 +258,13 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
       isScrollControlled: true,
       backgroundColor: context.colors.bgElevated,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (_) => TransactionDetailsSheet(txn: txn),
+      builder: (_) => TransactionDetailsSheet(
+        customer: widget.customer,
+        txn: txn,
+        onEdit: () => _openEditTxn(txn),
+        onShare: () => _shareTxn(txn),
+        onDelete: () => _confirmDeleteSingleTxn(txn),
+      ),
     );
   }
 
@@ -147,77 +280,127 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // Re-watch the provider so the header balance updates live.
-    context.watch<LedgerProvider>();
+    final provider = context.watch<LedgerProvider>();
     final customer = widget.customer;
     final balance = customer.balance;
     final allTxns = _filteredTxns;
     final showAll = _showAllHistory || allTxns.length <= 3 || _query.trim().isNotEmpty;
     final txnsToShow = showAll ? allTxns : allTxns.sublist(allTxns.length - 3);
+    final inSelectionMode = _selectedTxnIds.isNotEmpty;
 
     return Scaffold(
       backgroundColor: c.bgDeep,
       appBar: AppBar(
-        backgroundColor: c.bgDeep,
+        backgroundColor: inSelectionMode ? c.brandPrimary.withOpacity(0.15) : c.bgDeep,
         elevation: 0,
-        titleSpacing: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back, color: c.muted), onPressed: () => Navigator.pop(context)),
-        title: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.brandPrimary.withOpacity(0.1),
-                border: Border.all(color: c.brandPrimary.withOpacity(0.2)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: customer.photoPath != null && File(customer.photoPath!).existsSync()
-                  ? Image.file(File(customer.photoPath!), fit: BoxFit.cover)
-                  : Text(customer.initials, style: TextStyle(color: c.brandPrimary, fontWeight: FontWeight.w800, fontSize: 12)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+        automaticallyImplyLeading: false,
+        titleSpacing: inSelectionMode ? 0 : 12,
+        leading: inSelectionMode
+            ? IconButton(
+                icon: Icon(Icons.close, color: c.textBody),
+                onPressed: () => setState(() => _selectedTxnIds.clear()),
+              )
+            : null,
+        title: inSelectionMode
+            ? Text(
+                '${_selectedTxnIds.length} Selected',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: c.textBody),
+              )
+            : Row(
                 children: [
-                  Text(customer.name.toUpperCase(),
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: c.textBody), overflow: TextOverflow.ellipsis),
-                  Text('Net Bal: ${formatRupees(balance)}',
-                      style: AppTheme.rupeeMono(balance > 0 ? c.udhar : c.jama, size: 11, weight: FontWeight.w800)),
+                  InkWell(
+                    onTap: _openEditCustomer,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: c.brandPrimary.withOpacity(0.12),
+                        border: Border.all(color: c.brandPrimary.withOpacity(0.25)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: customer.photoPath != null && File(customer.photoPath!).existsSync()
+                          ? Image.file(File(customer.photoPath!), fit: BoxFit.cover)
+                          : Text(customer.initials, style: TextStyle(color: c.brandPrimary, fontWeight: FontWeight.w900, fontSize: 13)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            customer.displayName(isHindi: provider.isHindiMode).toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w900,
+                              color: c.textBody,
+                              height: 1.15,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Balance: ${formatRupees(balance)}',
+                          style: AppTheme.rupeeMono(balance > 0 ? c.udhar : c.jama, size: 11.5, weight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_searchOpen ? Icons.close : Icons.search, color: c.muted, size: 20),
-            onPressed: () => setState(() {
-              _searchOpen = !_searchOpen;
-              if (!_searchOpen) _query = '';
-            }),
-          ),
-          if (customer.whatsappEnabled)
-            IconButton(
-              icon: const Icon(Icons.send_rounded, color: Color(0xFF25D366), size: 20),
-              tooltip: 'Send ledger summary via WhatsApp',
-              onPressed: _sendLedgerViaWhatsApp,
-            ),
-          IconButton(
-            icon: Icon(Icons.message_outlined, color: c.muted, size: 19),
-            tooltip: 'Send ledger summary via SMS',
-            onPressed: _sendLedgerViaSMS,
-          ),
-          IconButton(
-            icon: Icon(Icons.picture_as_pdf_outlined, color: c.muted, size: 19),
-            tooltip: 'Export to PDF',
-            onPressed: _exportPdf,
-          ),
-        ],
+        actions: inSelectionMode
+            ? [
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: c.udhar, size: 22),
+                  tooltip: 'Delete Selected',
+                  onPressed: _confirmDeleteSelected,
+                ),
+              ]
+            : [
+                IconButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  constraints: const BoxConstraints(minWidth: 34, minHeight: 36),
+                  icon: Icon(_searchOpen ? Icons.close : Icons.search, color: c.muted, size: 20),
+                  tooltip: 'Search timeline',
+                  onPressed: () => setState(() {
+                    _searchOpen = !_searchOpen;
+                    if (!_searchOpen) _query = '';
+                  }),
+                ),
+                if (customer.whatsappEnabled)
+                  IconButton(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    constraints: const BoxConstraints(minWidth: 34, minHeight: 36),
+                    icon: const Icon(Icons.send_rounded, color: Color(0xFF25D366), size: 19),
+                    tooltip: 'Send statement via WhatsApp',
+                    onPressed: _sendLedgerViaWhatsApp,
+                  ),
+                IconButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  constraints: const BoxConstraints(minWidth: 34, minHeight: 36),
+                  icon: Icon(Icons.message_outlined, color: c.muted, size: 19),
+                  tooltip: 'Send reminder via SMS',
+                  onPressed: _sendLedgerViaSMS,
+                ),
+                IconButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  constraints: const BoxConstraints(minWidth: 34, minHeight: 36),
+                  icon: Icon(Icons.picture_as_pdf_outlined, color: c.muted, size: 19),
+                  tooltip: 'Export statement to PDF',
+                  onPressed: _exportPdf,
+                ),
+                const SizedBox(width: 4),
+              ],
       ),
       body: Column(
         children: [
@@ -267,10 +450,33 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
                         );
                       }
                       final txn = txnsToShow[showAll ? i : i - 1];
-                      return GestureDetector(
-                        onTap: () => _showTxnDetails(txn),
-                        onLongPress: () => _shareTxn(txn),
-                        child: TransactionTile(txn: txn, onTap: () => _showTxnDetails(txn)),
+                      final isSelected = _selectedTxnIds.contains(txn.id);
+
+                      return TransactionTile(
+                        txn: txn,
+                        isSelected: isSelected,
+                        onTap: () {
+                          if (inSelectionMode) {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedTxnIds.remove(txn.id);
+                              } else {
+                                _selectedTxnIds.add(txn.id);
+                              }
+                            });
+                          } else {
+                            _showTxnDetails(txn);
+                          }
+                        },
+                        onLongPress: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedTxnIds.remove(txn.id);
+                            } else {
+                              _selectedTxnIds.add(txn.id);
+                            }
+                          });
+                        },
                       );
                     },
                   ),
@@ -292,7 +498,7 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
                 Expanded(
                   child: _actionButton(
                     context,
-                    label: 'JAMA',
+                    label: provider.isHindiMode ? 'जमा' : 'JAMA',
                     color: c.jama,
                     icon: Icons.remove,
                     onTap: () => showTxnFormSheet(context, customer: customer, initialType: TxnType.jama),
@@ -317,7 +523,7 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
                 Expanded(
                   child: _actionButton(
                     context,
-                    label: 'UDHAR',
+                    label: provider.isHindiMode ? 'उधार' : 'UDHAR',
                     color: c.udhar,
                     icon: Icons.add,
                     onTap: () => showTxnFormSheet(context, customer: customer, initialType: TxnType.udhar),
@@ -340,14 +546,22 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
         decoration: BoxDecoration(
           color: context.colors.bgSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withOpacity(0.4), width: 1.2),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: color),
+            Icon(icon, size: 17, color: color),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: color)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.8,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
