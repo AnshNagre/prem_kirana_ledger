@@ -349,19 +349,6 @@ class SettingsSheet extends StatelessWidget {
             const SizedBox(height: 8),
 
             _SettingsRow(
-              icon: Icons.translate_rounded,
-              iconColor: const Color(0xFF6366F1),
-              title: 'Hindi Mode (En ⇄ हि)',
-              subtitle: 'Display customer names and ledger Jama/Udhar in Hindi.',
-              trailing: Switch(
-                value: provider.isHindiMode,
-                activeThumbColor: c.brandPrimary,
-                onChanged: (_) => provider.toggleHindiMode(),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            _SettingsRow(
               icon: Icons.dark_mode_outlined,
               iconColor: c.brandPrimary,
               title: 'Dark / Light Theme',

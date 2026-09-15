@@ -35,7 +35,6 @@ enum HomeFilter { none, udharOnly, jamaToday }
 class LedgerProvider extends ChangeNotifier {
   static const _prefsCustomersKey = 'pk_customers_v1';
   static const _prefsThemeKey = 'pk_theme_v1';
-  static const _prefsHindiModeKey = 'pk_hindi_mode_v1';
 
   final _uuid = const Uuid();
   final List<Customer> _customers = [];
@@ -45,7 +44,6 @@ class LedgerProvider extends ChangeNotifier {
   CustomerCategory? _categoryFilter;
   String _searchQuery = '';
   DateTime _selectedJamaDate = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  bool _isHindiMode = false;
 
   List<Customer> get customers => List.unmodifiable(_customers);
   List<BulkTxnDraftEntry> get bulkDraftEntries => List.unmodifiable(_bulkDraftEntries);
@@ -54,7 +52,6 @@ class LedgerProvider extends ChangeNotifier {
   CustomerCategory? get categoryFilter => _categoryFilter;
   String get searchQuery => _searchQuery;
   DateTime get selectedJamaDate => _selectedJamaDate;
-  bool get isHindiMode => _isHindiMode;
 
   bool get isSelectedJamaDateToday {
     final now = DateTime.now();
@@ -85,25 +82,6 @@ class LedgerProvider extends ChangeNotifier {
   void setSelectedJamaDate(DateTime date) {
     _selectedJamaDate = DateTime(date.year, date.month, date.day);
     notifyListeners();
-  }
-
-  void toggleHindiMode() {
-    _isHindiMode = !_isHindiMode;
-    _persistHindiMode();
-    notifyListeners();
-  }
-
-  void setHindiMode(bool enabled) {
-    if (_isHindiMode != enabled) {
-      _isHindiMode = enabled;
-      _persistHindiMode();
-      notifyListeners();
-    }
-  }
-
-  Future<void> _persistHindiMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefsHindiModeKey, _isHindiMode);
   }
 
   /// Checks whether a customer already has an identical transaction on the specified date.
@@ -567,11 +545,6 @@ class LedgerProvider extends ChangeNotifier {
     final savedTheme = prefs.getString(_prefsThemeKey);
     if (savedTheme != null) {
       _themeMode = savedTheme == 'light' ? ThemeMode.light : ThemeMode.dark;
-    }
-
-    final savedHindi = prefs.getBool(_prefsHindiModeKey);
-    if (savedHindi != null) {
-      _isHindiMode = savedHindi;
     }
 
     final raw = prefs.getString(_prefsCustomersKey);

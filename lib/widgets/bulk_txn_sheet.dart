@@ -187,7 +187,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
     if (hasExistingInLedger || hasExistingInQueue) {
       final formattedDate = '${_date.day}/${_date.month}/${_date.year}';
       final formattedAmount = formatRupees(amount);
-      final entryTypeLabel = _type.displayLabel(isHindi: provider.isHindiMode);
+      final entryTypeLabel = _type.label;
       final confirm = await showDialog<bool>(
         context: context,
         builder: (dialogCtx) {
@@ -379,7 +379,7 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                                   title: Row(
                                     children: [
                                       Text(
-                                        s.displayName(isHindi: provider.isHindiMode),
+                                        s.name,
                                         style: TextStyle(color: c.textBody, fontSize: 13, fontWeight: FontWeight.w700),
                                       ),
                                       const SizedBox(width: 6),
@@ -459,9 +459,9 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                     'ENTRY TYPE',
                     Row(
                       children: [
-                        Expanded(child: _typeToggle(context, TxnType.udhar, provider.isHindiMode ? 'उधार (UDHAR)' : 'UDHAR (DEBIT)', c.udhar)),
+                        Expanded(child: _typeToggle(context, TxnType.udhar, 'UDHAR (DEBIT)', c.udhar)),
                         const SizedBox(width: 8),
-                        Expanded(child: _typeToggle(context, TxnType.jama, provider.isHindiMode ? 'जमा (JAMA)' : 'JAMA (CREDIT)', c.jama)),
+                        Expanded(child: _typeToggle(context, TxnType.jama, 'JAMA (CREDIT)', c.jama)),
                       ],
                     ),
                   ),
@@ -614,14 +614,12 @@ class _BulkTxnSheetState extends State<BulkTxnSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              provider.isHindiMode
-                                  ? (provider.findCustomerByName(entry.customerName)?.displayName(isHindi: true) ?? entry.customerName)
-                                  : entry.customerName,
+                              entry.customerName,
                               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: c.textBody),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${entry.type.displayLabel(isHindi: provider.isHindiMode)} · ${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                              '${entry.type.label} · ${entry.date.day}/${entry.date.month}/${entry.date.year}',
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.muted),
                             ),
                           ],

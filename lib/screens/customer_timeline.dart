@@ -336,7 +336,7 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            customer.displayName(isHindi: provider.isHindiMode).toUpperCase(),
+                            customer.name.toUpperCase(),
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w900,
@@ -498,7 +498,7 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
                 Expanded(
                   child: _actionButton(
                     context,
-                    label: provider.isHindiMode ? 'जमा' : 'JAMA',
+                    label: 'JAMA',
                     color: c.jama,
                     icon: Icons.remove,
                     onTap: () => showTxnFormSheet(context, customer: customer, initialType: TxnType.jama),
@@ -523,7 +523,7 @@ class _CustomerTimelineScreenState extends State<CustomerTimelineScreen> {
                 Expanded(
                   child: _actionButton(
                     context,
-                    label: provider.isHindiMode ? 'उधार' : 'UDHAR',
+                    label: 'UDHAR',
                     color: c.udhar,
                     icon: Icons.add,
                     onTap: () => showTxnFormSheet(context, customer: customer, initialType: TxnType.udhar),

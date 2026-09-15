@@ -27,7 +27,6 @@ class CustomerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final isHindi = context.select<LedgerProvider, bool>((p) => p.isHindiMode);
     final balance = customer.balance;
     final isSettled = balance <= 0;
 
@@ -102,7 +101,7 @@ class CustomerCard extends StatelessWidget {
 
                   // Row 2: Customer Name
                   Text(
-                    customer.displayName(isHindi: isHindi).toUpperCase(),
+                    customer.name.toUpperCase(),
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, height: 1.15, color: c.textBody),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -133,12 +132,10 @@ class CustomerCard extends StatelessWidget {
               final isYesterday = d.year == yesterday.year && d.month == yesterday.month && d.day == yesterday.day;
               final jamaAmount = customer.jamaOnDate(d);
               final badgeLabel = isToday
-                  ? (isHindi ? 'आज जमा' : 'CREDITED TODAY')
+                  ? 'CREDITED TODAY'
                   : isYesterday
-                      ? (isHindi ? 'कल जमा' : 'CREDITED YESTERDAY')
-                      : (isHindi
-                          ? '${DateFormat('dd MMM').format(d)} को जमा'
-                          : 'CREDITED ON ${DateFormat('dd MMM').format(d).toUpperCase()}');
+                      ? 'CREDITED YESTERDAY'
+                      : 'CREDITED ON ${DateFormat('dd MMM').format(d).toUpperCase()}';
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -205,13 +202,11 @@ class CustomerCard extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      isSettled
-                          ? (isHindi ? 'जमा' : 'JAMA')
-                          : (isHindi ? 'उधार' : 'UDHAR'),
+                      isSettled ? 'JAMA' : 'UDHAR',
                       style: TextStyle(
-                        fontSize: isHindi ? 11 : 10.5,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: isHindi ? 0.2 : 0.6,
+                        letterSpacing: 0.6,
                         color: isSettled ? c.jama : c.udhar,
                       ),
                     ),

@@ -7,10 +7,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
       - uses: subosito/flutter-action@v2
         with:
@@ -28,20 +36,50 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build=$BUILD" >> $GITHUB_OUTPUT
 
-      - name: Configure Android Signing Keystore
+      - name: Decode Release Keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            mkdir -p ~/.android
-            echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
-            echo "Custom keystore installed successfully."
-          else
-            echo "Warning: KEYSTORE_BASE64 is empty."
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 secret is not configured! A signed release APK cannot be built."
+            exit 1
+          fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          if [ ! -s "$RUNNER_TEMP/release.jks" ]; then
+            echo "::error::Decoded keystore file is empty or corrupted."
+            exit 1
+          fi
+          echo "Release keystore decoded successfully."
+
+      - name: Build Signed Release APK
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: flutter build apk --release
+
+      - name: Verify APK Signature
+        run: |
+          APK_FILE="build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -f "$APK_FILE" ]; then
+            echo "::error::Expected APK file not found at $APK_FILE"
+            exit 1
           fi
 
-      - name: Build APK
-        run: flutter build apk --release
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ]; then
+            echo "Verifying APK with $APKSIGNER..."
+            "$APKSIGNER" verify --verbose --print-certs "$APK_FILE"
+          else
+            echo "apksigner not found; verifying with keytool..."
+            keytool -printcert -jarfile "$APK_FILE"
+          fi
+          echo "APK signature successfully verified!"
+
+      - name: Clean up Keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
 
       - name: Rename APK
         run: mv build/app/outputs/flutter-apk/app-release.apk app-release-${{ steps.version.outputs.version }}.apk

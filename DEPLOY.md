@@ -42,6 +42,21 @@ app itself checks for updates on launch. No wifi/USB transfer needed.
 - `home_dashboard.dart` converted to a `StatefulWidget` with
   `initState()` calling `UpdateChecker.checkForUpdate(context)`.
 - Flutter version pinned in the workflow to match local: `3.44.6`.
+- **Release Signing configured**:
+  - `android/app/build.gradle` is configured with `signingConfigs.release` reading from environment variables (`KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) or `android/key.properties`.
+  - Keystore files (`*.jks`, `*.keystore`) and `key.properties` are strictly gitignored.
+  - CI workflow decodes the release keystore, signs the release APK, and runs `apksigner verify` before publishing.
+
+## GitHub Actions Secrets Configuration (Required)
+
+Go to **Repo Settings → Secrets and variables → Actions** and add the following repository secrets:
+
+1. `RELEASE_KEYSTORE_BASE64`: Base64 encoded string of `release.jks`.
+2. `KEYSTORE_PASSWORD`: Keystore password (e.g. `PremKirana2026SecureReleaseKey!`).
+3. `KEY_ALIAS`: Key alias name (`prem_kirana_key`).
+4. `KEY_PASSWORD`: Key password (same as keystore password).
+
+> **CRITICAL**: Keep a secure external backup (e.g. in your password manager) of `release.jks` and these credentials. If the keystore is lost or changed, Android will refuse to update existing installations with a signature mismatch error, requiring all users to uninstall the app and lose local data.
 
 ## Known gotchas (already solved once, in case they resurface)
 

@@ -4,6 +4,12 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.eren.prem_kirana_ledger"
     compileSdk 36
@@ -29,11 +35,37 @@ android {
         versionName flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            def keyFilePath = System.getenv("KEYSTORE_PATH") ?: (findProperty("RELEASE_STORE_FILE") ?: keystoreProperties['storeFile'])
+            def storePasswordValue = System.getenv("KEYSTORE_PASSWORD") ?: (findProperty("RELEASE_STORE_PASSWORD") ?: keystoreProperties['storePassword'])
+            def keyAliasValue = System.getenv("KEY_ALIAS") ?: (findProperty("RELEASE_KEY_ALIAS") ?: keystoreProperties['keyAlias'])
+            def keyPasswordValue = System.getenv("KEY_PASSWORD") ?: (findProperty("RELEASE_KEY_PASSWORD") ?: keystoreProperties['keyPassword'])
+
+            if (keyFilePath) {
+                def keyFile = new File(keyFilePath)
+                if (!keyFile.isAbsolute()) {
+                    if (rootProject.file(keyFilePath).exists()) {
+                        keyFile = rootProject.file(keyFilePath)
+                    } else if (new File(rootProject.rootDir.parentFile, keyFilePath).exists()) {
+                        keyFile = new File(rootProject.rootDir.parentFile, keyFilePath)
+                    } else if (file(keyFilePath).exists()) {
+                        keyFile = file(keyFilePath)
+                    }
+                }
+                storeFile keyFile
+                storePassword storePasswordValue
+                keyAlias keyAliasValue
+                keyPassword keyPasswordValue
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
 }

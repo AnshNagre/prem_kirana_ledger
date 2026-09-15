@@ -193,7 +193,7 @@ class _TxnFormSheetState extends State<TxnFormSheet> {
         )) {
       final formattedDate = DateFormat('dd/MM/yyyy').format(_dateTime);
       final formattedAmount = formatRupees(amount);
-      final entryTypeLabel = _type.displayLabel(isHindi: provider.isHindiMode);
+      final entryTypeLabel = _type.label;
       final confirm = await showDialog<bool>(
         context: context,
         builder: (dialogCtx) {
@@ -219,7 +219,7 @@ class _TxnFormSheetState extends State<TxnFormSheet> {
               ],
             ),
             content: Text(
-              'This entry already exists for "${widget.customer.displayName(isHindi: provider.isHindiMode)}" on $formattedDate ($entryTypeLabel $formattedAmount).\n\nWould you like to enter this?',
+              'This entry already exists for "${widget.customer.name}" on $formattedDate ($entryTypeLabel $formattedAmount).\n\nWould you like to enter this?',
               style: TextStyle(
                 color: c.textBody,
                 fontSize: 13.5,

@@ -11,3 +11,8 @@ build/
 .kotlin/
 local.properties
 *.log
+
+# Keystores and signing credentials
+*.keystore
+*.jks
+key.properties

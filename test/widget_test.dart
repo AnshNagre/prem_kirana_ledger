@@ -338,21 +338,6 @@ void main() {
     expect(provider.visibleCustomers.first.name, equals('Past Buyer'));
   });
 
-  test('Hindi transliteration converts customer names accurately and respects Hindi mode', () {
-    final c1 = Customer(id: '1', name: 'Ramesh Patel', phone: '123');
-    final c2 = Customer(id: '2', name: 'Ansh Nagre', phone: '456');
-
-    expect(c1.displayName(isHindi: false), equals('Ramesh Patel'));
-    expect(c1.displayName(isHindi: true), contains('रमेश'));
-    expect(c2.displayName(isHindi: true), contains('अंश'));
-
-    // TxnType labels
-    expect(TxnType.udhar.displayLabel(isHindi: false), equals('UDHAR'));
-    expect(TxnType.udhar.displayLabel(isHindi: true), equals('उधार'));
-    expect(TxnType.jama.displayLabel(isHindi: false), equals('JAMA'));
-    expect(TxnType.jama.displayLabel(isHindi: true), equals('जमा'));
-  });
-
   test('hasExistingTransaction correctly detects duplicate entries on the same date', () {
     final provider = LedgerProvider();
     final today = DateTime.now();

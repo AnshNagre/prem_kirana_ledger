@@ -1,4 +1,3 @@
-import '../utils/hindi_transliterator.dart';
 import 'transaction.dart';
 
 enum CustomerCategory {
@@ -53,11 +52,8 @@ class Customer {
         category = category ?? CustomerCategory.newCustomer,
         transactions = transactions ?? [];
 
-  /// Returns the customer name in English or Hindi Devanagari based on [isHindi].
-  String displayName({bool isHindi = false}) {
-    if (!isHindi) return name;
-    return HindiTransliterator.toHindi(name);
-  }
+  /// Returns the customer name.
+  String displayName() => name;
 
   /// Two-letter avatar initials, e.g. "Ansh Nagre" -> "AN".
   String get initials {

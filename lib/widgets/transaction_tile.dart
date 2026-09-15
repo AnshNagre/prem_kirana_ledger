@@ -25,7 +25,6 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final isHindi = context.select<LedgerProvider, bool>((p) => p.isHindiMode);
     final isUdhar = txn.type.isUdhar;
     final accent = isUdhar ? c.udhar : c.jama;
 
@@ -86,11 +85,11 @@ class TransactionTile extends StatelessWidget {
                                 border: Border.all(color: accent.withOpacity(0.35), width: 0.9),
                               ),
                               child: Text(
-                                txn.type.displayLabel(isHindi: isHindi),
+                                txn.type.label,
                                 style: TextStyle(
-                                  fontSize: isHindi ? 10.5 : 9.5,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: isHindi ? 0.2 : 0.6,
+                                  letterSpacing: 0.6,
                                   color: accent,
                                 ),
                               ),
@@ -194,7 +193,6 @@ class TransactionDetailsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final isHindi = context.select<LedgerProvider, bool>((p) => p.isHindiMode);
     final isUdhar = txn.type.isUdhar;
     final accent = isUdhar ? c.udhar : c.jama;
 
@@ -227,11 +225,11 @@ class TransactionDetailsSheet extends StatelessWidget {
                         border: Border.all(color: accent.withOpacity(0.35), width: 0.9),
                       ),
                       child: Text(
-                        txn.type.displayLabel(isHindi: isHindi),
+                        txn.type.label,
                         style: TextStyle(
-                          fontSize: isHindi ? 11.5 : 10.5,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: isHindi ? 0.2 : 0.6,
+                          letterSpacing: 0.6,
                           color: accent,
                         ),
                       ),

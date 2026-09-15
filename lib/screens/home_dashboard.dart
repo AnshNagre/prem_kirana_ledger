@@ -112,7 +112,6 @@ class _HomeDashboardState extends State<HomeDashboard> {
 
   void _showCustomerOptions(BuildContext context, Customer customer) {
     final c = context.colors;
-    final isHindi = context.read<LedgerProvider>().isHindiMode;
 
     showModalBottomSheet(
       context: context,
@@ -186,7 +185,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            customer.displayName(isHindi: isHindi).toUpperCase(),
+                            customer.name.toUpperCase(),
                             style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: c.textBody),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -213,13 +212,11 @@ class _HomeDashboardState extends State<HomeDashboard> {
                             border: Border.all(color: (customer.balance <= 0 ? c.jama : c.udhar).withOpacity(0.35), width: 1),
                           ),
                           child: Text(
-                            customer.balance <= 0
-                                ? (isHindi ? 'जमा' : 'JAMA')
-                                : (isHindi ? 'उधार' : 'UDHAR'),
+                            customer.balance <= 0 ? 'JAMA' : 'UDHAR',
                             style: TextStyle(
-                              fontSize: isHindi ? 10.5 : 9.5,
+                              fontSize: 9.5,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: isHindi ? 0.2 : 0.5,
+                              letterSpacing: 0.5,
                               color: customer.balance <= 0 ? c.jama : c.udhar,
                             ),
                           ),
@@ -679,49 +676,6 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          InkWell(
-            onTap: provider.toggleHindiMode,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: provider.isHindiMode ? c.brandPrimary.withOpacity(0.18) : c.bgSurface,
-                border: Border.all(
-                  color: provider.isHindiMode ? c.brandPrimary : c.borderHairline,
-                  width: 1.2,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'EN',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: !provider.isHindiMode ? FontWeight.w900 : FontWeight.w600,
-                      color: !provider.isHindiMode ? c.brandPrimary : c.muted,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Text('⇄', style: TextStyle(fontSize: 10, color: c.muted)),
-                  ),
-                  Text(
-                    'हि',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: provider.isHindiMode ? FontWeight.w900 : FontWeight.w600,
-                      color: provider.isHindiMode ? c.brandPrimary : c.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           _RoundIconButton(
             icon: provider.themeMode == ThemeMode.dark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
             tooltip: 'Toggle Theme',
